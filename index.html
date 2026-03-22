@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>貪吃蛇遊戲</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            background-color: black;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            color: white;
+            font-family: Arial, sans-serif;
+            user-select: none;
+        }
+        canvas {
+            border: 2px solid white;
+            background-color: #111;
+            margin-bottom: 10px;
+        }
+        #score { font-size: 18px; margin-bottom:5px; }
+        #message { font-size: 20px; margin-bottom:5px; text-align:center; }
+        #restartBtn { padding:10px 20px; font-size:18px; cursor:pointer; display:none; margin-bottom:10px; }
+
+        /* 十字框容器 */
+        #controlsContainer {
+            display: grid;
+            grid-template-columns: 80px 80px 80px;
+            grid-template-rows: 80px 80px 80px;
+            gap:5px;
+            background-color: rgba(50,50,50,0.8);
+            border-radius: 30px;
+            padding:10px;
+            justify-items: center;
+            align-items: center;
+        }
+
+        /* 按鈕 */
+        .btn {
+            width:60px;
+            height:60px;
+            background-color:#333;
+            color:white;
+            font-size:28px;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            border-radius:12px;
+            cursor:pointer;
+            user-select:none;
+        }
+
+        /* 中間小框 (暫停按鈕) */
+        #centerBtn {
+            width:60px;
+            height:60px;
+            background-color:#555;
+            border-radius:12px;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            font-size:18px;
+            cursor:pointer;
+            user-select:none;
+            color:white;
+        }
+    </style>
+</head>
+<body>
+<div id="score">分數: 0</div>
+<canvas id="game" width="400" height="400"></canvas>
+<div id="message"></div>
+<button id="restartBtn">重新開始</button>
+
+<!-- 十字方向控制 -->
+<div id="controlsContainer">
+    <div></div>
+    <div class="btn" data-dir="UP">↑</div>
+    <div></div>
+    <div class="btn" data-dir="LEFT">←</div>
+    <div id="centerBtn">暫停</div>
+    <div class="btn" data-dir="RIGHT">→</div>
+    <div></div>
+    <div class="btn" data-dir="DOWN">↓</div>
+    <div></div>
+</div>
+
+<script>
+    const canvas=document.getElementById('game');
+    const ctx=canvas.getContext('2d');
+    const messageDiv=document.getElementById('message');
+    const restartBtn=document.getElementById('restartBtn');
+    const scoreDiv=document.getElementById('score');
+    const controlBtns=document.querySelectorAll('.btn');
+    const centerBtn=document.getElementById('centerBtn');
+
+    const box=20;
+    let snake,direction,food,score,paused,gameOver;
+
+    function initGame(){
+        snake=[{x:8*box,y:8*box}];
+        direction='RIGHT';
+        food={x:Math.floor(Math.random()*20)*box,y:Math.floor(Math.random()*20)*box};
+        score=0;
+        paused=false;
+        gameOver=false;
+        messageDiv.textContent='';
+        restartBtn.style.display='none';
+        scoreDiv.textContent='分數: 0';
+    }
+
+    // 鍵盤控制
+    document.addEventListener('keydown',(e)=>{
+        switch(e.key){
+            case 'ArrowUp': case 'w': case 'W': case 'ㄊ': if(direction!=='DOWN') direction='UP'; break;
+            case 'ArrowDown': case 's': case 'S': case 'ㄇ': if(direction!=='UP') direction='DOWN'; break;
+            case 'ArrowLeft': case 'a': case 'A': case 'ㄋ': if(direction!=='RIGHT') direction='LEFT'; break;
+            case 'ArrowRight': case 'd': case 'D': case 'ㄎ': if(direction!=='LEFT') direction='RIGHT'; break;
+            case ' ':
+                if(!gameOver){
+                    paused=!paused;
+                    messageDiv.textContent=paused?'暫停中':'';
+                }
+                break;
+        }
+    });
+
+    // 滑鼠 / 觸控控制方向
+    controlBtns.forEach(btn=>{
+        const setDir=()=>{
+            const dir=btn.getAttribute('data-dir');
+            if(dir==='UP' && direction!=='DOWN') direction='UP';
+            if(dir==='DOWN' && direction!=='UP') direction='DOWN';
+            if(dir==='LEFT' && direction!=='RIGHT') direction='LEFT';
+            if(dir==='RIGHT' && direction!=='LEFT') direction='RIGHT';
+        };
+        btn.addEventListener('touchstart',setDir);
+        btn.addEventListener('mousedown',setDir);
+    });
+
+    // 中間框點暫停
+    centerBtn.addEventListener('touchstart',togglePause);
+    centerBtn.addEventListener('mousedown',togglePause);
+    function togglePause(){
+        if(!gameOver){
+            paused=!paused;
+            messageDiv.textContent=paused?'暫停中':'';
+        }
+    }
+
+    restartBtn.addEventListener('click',initGame);
+
+    function drawFood(){ctx.fillStyle='red';ctx.fillRect(food.x,food.y,box,box);}
+    function drawSnake(){ctx.fillStyle='lime';snake.forEach(seg=>ctx.fillRect(seg.x,seg.y,box,box));}
+
+    function update(){
+        if(paused||gameOver) return;
+        let head={...snake[0]};
+        if(direction==='UP') head.y-=box;
+        if(direction==='DOWN') head.y+=box;
+        if(direction==='LEFT') head.x-=box;
+        if(direction==='RIGHT') head.x+=box;
+        if(head.x===food.x && head.y===food.y){
+            snake.unshift(head);
+            score++;
+            scoreDiv.textContent=`分數: ${score}`;
+            food={x:Math.floor(Math.random()*20)*box,y:Math.floor(Math.random()*20)*box};
+        } else { snake.pop(); snake.unshift(head); }
+        if(head.x<0||head.x>=400||head.y<0||head.y>=400||snake.slice(1).some(s=>s.x===head.x&&s.y===head.y)){
+            gameOver=true;
+            messageDiv.textContent=`你死了！分數: ${score}`;
+            restartBtn.style.display='block';
+        }
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        drawFood();
+        drawSnake();
+    }
+
+    initGame();
+    setInterval(update,250);
+</script>
+</body>
+</html>
